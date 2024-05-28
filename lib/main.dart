@@ -1,5 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
+import 'login_screen.dart';
+import 'serviceList.dart'; // Importa el nuevo archivo
 
 const Color primaryColor = Color(0xFF1E3E59);
 const Color secondaryColor = Color(0xFF14548C);
@@ -20,6 +23,8 @@ const String svgIcon = '''
 ''';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  debugDefaultTargetPlatformOverride = TargetPlatform.fuchsia;
   runApp(const MyApp());
 }
 
@@ -69,12 +74,29 @@ class BancoScreen extends StatelessWidget {
           children: <Widget>[
             const SizedBox(height: 35),
             Center(
-              child: SvgPicture.string(svgIcon, height: 185
-              , color: primaryColor),
+              child: SvgPicture.string(svgIcon, height: 185, color: primaryColor),
             ),
             const SizedBox(height: 10),
-            const LoginButton(icon: Icons.person, text: 'Usuario y contraseña'),
-            const LoginButton(icon: Icons.fingerprint, text: 'Huella / Face ID'),
+            LoginButton(
+              icon: Icons.person,
+              text: 'Usuario y contraseña',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              },
+            ),
+            LoginButton(
+              icon: Icons.fingerprint,
+              text: 'Huella / Face ID',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ServiceListScreen()),
+                );
+              },
+            ),
             const LoginButton(icon: Icons.lock, text: 'PIN de 6 dígitos'),
             TextButton(
               onPressed: () {},
@@ -100,8 +122,9 @@ class BancoScreen extends StatelessWidget {
 class LoginButton extends StatelessWidget {
   final IconData icon;
   final String text;
+  final VoidCallback? onTap;
 
-  const LoginButton({super.key, required this.icon, required this.text});
+  const LoginButton({super.key, required this.icon, required this.text, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +135,7 @@ class LoginButton extends StatelessWidget {
       child: ListTile(
         leading: Icon(icon, color: primaryColor),
         title: Text(text, style: const TextStyle(color: primaryColor)),
-        onTap: () {},
+        onTap: onTap,
       ),
     );
   }
