@@ -35,7 +35,7 @@ class LoginScreenState extends State<LoginScreen> {
     final String username = _usernameController.text;
     final String password = _passwordController.text;
 
-    final Uri url = Uri.parse('http://192.168.0.22:6565/api/Clientes/$username');
+    final Uri url = Uri.parse('http://172.22.25.232:6565/api/Clientes/$username');
 
     try {
       final response = await http.get(url);
