@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lottie/lottie.dart'; // Importación de Lottie
 
 const Color primaryColor = Color(0xFF1E3E59);
 const Color secondaryColor = Color(0xFF14548C);
@@ -14,29 +15,24 @@ class PaymentListScreen extends StatefulWidget {
   const PaymentListScreen({super.key, required this.serviceName});
 
   @override
-  // ignore: library_private_types_in_public_api
-  _PaymentListScreenState createState() => _PaymentListScreenState();
+  PaymentListScreenState createState() => PaymentListScreenState();
 }
 
-class _PaymentListScreenState extends State<PaymentListScreen> {
+class PaymentListScreenState extends State<PaymentListScreen> {
   late Future<List<Payment>> _payments;
-  String? _username;
   String? _clientFullName;
   double? _balance;
 
   Future<List<Payment>> _fetchPayments() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? ci = prefs.getString('username');
-    final double? balance = prefs.getDouble('ctaSaldo'); // Correctly retrieving balance as double
+    final double? balance = prefs.getDouble('ctaSaldo');
     final String? cliNombre = prefs.getString('cliNombre');
     final String? cliApellido = prefs.getString('cliApellido');
 
-    print('Username from prefs: $ci');
-    print('Balance from prefs: $balance');
-    print('Client name from prefs: $cliNombre $cliApellido');
+    if (!mounted) return [];
 
     setState(() {
-      _username = ci;
       _clientFullName = '$cliNombre $cliApellido';
       _balance = balance;
     });
@@ -59,8 +55,83 @@ class _PaymentListScreenState extends State<PaymentListScreen> {
   Future<void> _logout() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.clear();
-    // ignore: use_build_context_synchronously
+    if (!mounted) return;
     Navigator.of(context).pushReplacementNamed('/'); // Reemplaza con tu ruta de login
+  }
+
+  Future<void> _pay(Payment payment) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final double? balance = prefs.getDouble('ctaSaldo');
+    final int? accountNumber = prefs.getInt('ctaNumero');
+
+    if (balance != null && balance >= payment.monto) {
+      final Uri updatePaymentUrl = Uri.parse('http://192.168.56.1:7771/api/Pruebas/actualizarEstado/${payment.codPago}/${widget.serviceName}');
+      final response = await http.get(updatePaymentUrl);
+     
+      if (response.statusCode == 200) {
+        bool updateSuccess = jsonDecode(response.body);
+
+        if (updateSuccess) {
+          final Uri updateBalanceUrl = Uri.parse('http://192.168.56.1:6565/api/Cuentas/actualizarSaldo/$accountNumber/${payment.monto}');
+          final balanceResponse = await http.put(updateBalanceUrl);
+         
+          if (balanceResponse.statusCode == 200) {
+            double newBalance = balance - payment.monto;
+            await prefs.setDouble('ctaSaldo', newBalance);
+
+            if (!mounted) return;
+            setState(() {
+              _balance = newBalance;
+            });
+
+            _showSuccessAnimation();
+          } else {
+            _showError('Error al actualizar el saldo');
+          }
+        } else {
+          _showError('Error al actualizar el estado del pago');
+        }
+      } else {
+        _showError('Error en la respuesta del servidor');
+      }
+    } else {
+      _showError('Saldo insuficiente');
+    }
+  }
+
+  void _showSuccessAnimation() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Pago exitoso'),
+        content: Lottie.asset(
+          'assets/success_animation.json',
+          repeat: false,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showError(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -71,8 +142,6 @@ class _PaymentListScreenState extends State<PaymentListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    print('Building widget with username: $_username, clientFullName: $_clientFullName, balance: $_balance');
-
     return Scaffold(
       appBar: AppBar(
         title: Text('Pagos - ${widget.serviceName}'),
@@ -93,7 +162,7 @@ class _PaymentListScreenState extends State<PaymentListScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Cliente: $_clientFullName', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text('Saldo: \$${_balance!.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), // Formatted balance to two decimal places
+                  Text('Saldo: \$${_balance!.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -119,9 +188,7 @@ class _PaymentListScreenState extends State<PaymentListScreen> {
                           title: Text(payment.codPago),
                           subtitle: Text('Monto: \$${payment.monto}'),
                           trailing: ElevatedButton(
-                            onPressed: () {
-                              // Acción de pago
-                            },
+                            onPressed: () => _pay(payment),
                             style: ElevatedButton.styleFrom(
                               foregroundColor: Colors.white, backgroundColor: accentColor,
                             ),
