@@ -27,14 +27,18 @@ class _PaymentListScreenState extends State<PaymentListScreen> {
   Future<List<Payment>> _fetchPayments() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? ci = prefs.getString('username');
-    final String? balance = prefs.getString('balance');
+    final double? balance = prefs.getDouble('ctaSaldo'); // Correctly retrieving balance as double
     final String? cliNombre = prefs.getString('cliNombre');
     final String? cliApellido = prefs.getString('cliApellido');
+
+    print('Username from prefs: $ci');
+    print('Balance from prefs: $balance');
+    print('Client name from prefs: $cliNombre $cliApellido');
 
     setState(() {
       _username = ci;
       _clientFullName = '$cliNombre $cliApellido';
-      _balance = balance != null ? double.parse(balance) : null;
+      _balance = balance;
     });
 
     if (ci == null) {
@@ -67,6 +71,8 @@ class _PaymentListScreenState extends State<PaymentListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print('Building widget with username: $_username, clientFullName: $_clientFullName, balance: $_balance');
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Pagos - ${widget.serviceName}'),
@@ -87,7 +93,7 @@ class _PaymentListScreenState extends State<PaymentListScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Cliente: $_clientFullName', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text('Saldo: \$$_balance', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('Saldo: \$${_balance!.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), // Formatted balance to two decimal places
                 ],
               ),
             ),
