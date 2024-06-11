@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'servicelist.dart';
 
 const Color primaryColor = Color(0xFF1E3E59);
 const Color secondaryColor = Color(0xFF14548C);
@@ -35,7 +37,7 @@ class LoginScreenState extends State<LoginScreen> {
     final String username = _usernameController.text;
     final String password = _passwordController.text;
 
-    final Uri url = Uri.parse('http://172.22.25.232:6565/api/Clientes/$username');
+    final Uri url = Uri.parse('http://192.168.56.1:6565/api/Clientes/$username');
 
     try {
       final response = await http.get(url);
@@ -44,7 +46,28 @@ class LoginScreenState extends State<LoginScreen> {
         final data = jsonDecode(response.body);
 
         if (data['Cli_Password'] == password) {
-          _showMessage('Inicio de sesión correcto');
+          final SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('username', username);
+          await prefs.setString('cliNombre', data['Cli_Nombre']);
+          await prefs.setString('cliApellido', data['Cli_Apellido']);
+
+          final Uri cuentaUrl = Uri.parse('http://192.168.56.1:6565/api/Cuentas/ci/$username');
+          final cuentaResponse = await http.get(cuentaUrl);
+
+          if (cuentaResponse.statusCode == 200) {
+            final cuentaData = jsonDecode(cuentaResponse.body);
+            await prefs.setInt('ctaNumero', cuentaData['Cta_Numero']);
+            await prefs.setDouble('ctaSaldo', cuentaData['Cta_Saldo']);
+
+            _showMessage('Inicio de sesión correcto');
+            Navigator.pushReplacement(
+              // ignore: use_build_context_synchronously
+              context,
+              MaterialPageRoute(builder: (context) => const ServiceListScreen()),
+            );
+          } else {
+            _showMessage('Error al obtener los datos de la cuenta');
+          }
         } else {
           _showMessage('Error: Contraseña incorrecta');
         }

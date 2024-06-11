@@ -24,7 +24,6 @@ const String svgIcon = '''
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  debugDefaultTargetPlatformOverride = TargetPlatform.fuchsia;
   runApp(const MyApp());
 }
 
